@@ -39,7 +39,7 @@ function jhovanic_ip_ban_install() {
 
   // Options
   add_option('jhovanic_ip_ban_db_version', $jhovanic_ip_ban_db_version);
-  add_option('jhovanic_ip_ban_whitelist', array(''));
+  add_option('jhovanic_ip_ban_whitelist', '');
   add_option('jhovanic_ip_ban_redirect', 'https://www.google.com/');
   add_option('jhovanic_ip_ban_treshold', '30 days');
 }
