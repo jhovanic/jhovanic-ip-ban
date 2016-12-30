@@ -117,7 +117,8 @@ function jhovanic_check_ip_address($ip, $ua) {
     }
     else {
       // Write the ip and user agent to the database
-      $wpdb->insert($table_name, array('ip' => $ip, 'user_agent' => $ua), array('%s', '%s'));
+      $wpdb->insert($table_name, array('ip' => $ip, 'user_agent' => $ua, 'last_visited' => date('Y-m-d H:i:s')),
+                    array('%s', '%s'));
     }
   }
   return false;
