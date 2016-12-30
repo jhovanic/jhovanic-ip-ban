@@ -42,6 +42,7 @@ function jhovanic_ip_ban_install() {
   add_option('jhovanic_ip_ban_whitelist', '');
   add_option('jhovanic_ip_ban_redirect', 'https://www.google.com/');
   add_option('jhovanic_ip_ban_treshold', '30 days');
+  add_option('jhovanic_ip_ban_time_allowed', '1 hour');
 }
 
 /**
@@ -95,12 +96,23 @@ function jhovanic_check_ip_address($ip, $ua) {
     $table_name = $wpdb->prefix . 'jhovanic_ban_list';
     $row = $wpdb->get_row("SELECT * FROM $table_name WHERE ip = '$ip'", ARRAY_A);
     if ($row) {
+      // Get the time allowed for a visitor before ban
+      $time_allowed = get_option('jhovanic_ip_ban_time_allowed');
+      $time_allowed_date = strtotime("+$time_allowed", strtotime($row['last_visited']));
+      // Get the ban treshold
       $treshold = get_option('jhovanic_ip_ban_treshold');
       $treshold_date = strtotime("+$treshold", strtotime($row['last_visited']));
-      if ((time() - $treshold_date) < 0 ) {
-        $wpdb->update($table_name, array('user_agent' => $ua, 'last_visited' => date('Y-m-d H:i:s')),
-                      array('id' => $row['id']));
-        return true;
+      $treshold_date = strtotime("+$time_allowed", $treshold_date);
+      if (time() - $time_allowed_date > 0) {  // if we're beyond the time allowed then do checkup
+        if ((time() - $treshold_date) < 0 ) {
+          return true;
+        }
+        else {
+          // If we're beyond the treshold allow visit
+          // but update the entry for future visits
+          $wpdb->update($table_name, array('user_agent' => $ua, 'last_visited' => date('Y-m-d H:i:s')),
+                        array('id' => $row['id']));
+        }
       }
     }
     else {
@@ -158,10 +170,12 @@ function jhovanic_ip_ban_callback() {
         $ip_whitelist = wp_kses($_POST['ip_whitelist'], array());
         $redirect_url = sanitize_text_field($_POST['redirect_url']);
         $ban_treshold = sanitize_text_field($_POST['ban_treshold']);
+        $time_allowed = sanitize_text_field($_POST['time_allowed']);
 
         update_option('jhovanic_ip_ban_whitelist', $ip_whitelist);
         update_option('jhovanic_ip_ban_redirect', $redirect_url);
         update_option('jhovanic_ip_ban_treshold', $ban_treshold);
+        update_option('jhovanic_ip_ban_time_allowed', $time_allowed);
     }
 
     // read values from option table
@@ -169,6 +183,7 @@ function jhovanic_ip_ban_callback() {
     $ip_whitelist = get_option('jhovanic_ip_ban_whitelist');
     $redirect_url = get_option('jhovanic_ip_ban_redirect');
     $ban_treshold = get_option('jhovanic_ip_ban_treshold');
+    $time_allowed = get_option('jhovanic_ip_ban_time_allowed');
 
 ?>
 
@@ -189,6 +204,13 @@ function jhovanic_ip_ban_callback() {
       <label for='ip-whitelist'><?php _e('IP Whitelist'); ?></label> <br/>
       <textarea name='ip_whitelist' id='ip-whitelist'><?php echo $ip_whitelist ?></textarea>
       <span><?php _e('Just 1 IP per line here.') ?></span>
+    </p>
+
+    <p>
+      <label for='ban-treshold'><?php _e('IP ban time allowed') ?></label> <br/>
+      <input type='text' name='time_allowed' id='time-allowed'
+             value='<?php echo $time_allowed ?>' />
+      <span><?php _e('We use plain english to set the allowed time (e.g. 1 day, 2 hours, 1 week).') ?></span>
     </p>
 
     <p>
